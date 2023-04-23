@@ -9,61 +9,157 @@
 # 2: Valor invalido
 # 3: Objeto finalizado
 
+from Leilao import Leilao
 import Pyro5.api
+import logging
+import threading
+import sys
+import os
+import time
 
 
 class CallbackHandler(object):
-    
-    @Pyro5.api.expose #???
+
+    @Pyro5.api.expose
     @Pyro5.api.callback
     def alo_callback(self):
-        print('Recebi alo')
         print('---------------------')
-        return 1//0
+        print('Recebi alo')
+        print('---------------------\n')
+        # return 1//0
+
+    @Pyro5.api.expose
+    @Pyro5.api.callback
+    def consultaCallback(self, leiloes):
+        print('---------------------')
+        print('Leiloes ativos:')
+        print(leiloes)
+        print('---------------------\n')
+        # return 1//0
+    
+    @Pyro5.api.expose
+    @Pyro5.api.callback
+    def lanceCallback(self, retorno):
+        print('---------------------')
+        print(retorno)
+        print('---------------------\n')
+        # return 1//0
+
 
 class Client:
-    
-    def __criar_leilao():
-        print("Criando leilao\n")
 
-    def __realizar_lance():
-        print("Realizando lance\n")
+    def __init__(self):
+        print('Digite seu nome')
+        self.nome = input()
+        self.registrado = False
+        self.registroCliente = {
+            "nome" : "",
+            "uri" : None
+        }
 
-    def notificaLance():
-        print("Foi realizado um lance\n")
+    def inicializaDaemon(self, daemon):
+        daemon.requestLoop()
+
+    @Pyro5.api.expose
+    @Pyro5.api.callback
+    def notificaLance(self, leilao):
+        print('---------------------')
+        print("Foi realizado um lance no leilao")
+        print(leilao)
+        print('---------------------\n')
+
+    @Pyro5.api.expose
+    @Pyro5.api.callback
+    def notificaNovo(self, leilao):
+        print('---------------------')
+        print("Um novo leilao foi cadastrado: ")
+        print(leilao)
+        print('---------------------\n')
 
     def notificaFim():
         print("Um leilao foi encerrado\n")
 
-client = Client
 
-#Registra a gerenciadora de callbacks no daemon
+# Inicializa o logger
+logging.basicConfig(stream=sys.stderr,
+                    format="[%(asctime)s,%(name)s,%(levelname)s] %(message)s")
+log = logging.getLogger("Pyro5")
+log.setLevel(logging.WARNING)
+
+# Registra a gerenciadora de callbacks e o client no daemon
 daemon = Pyro5.api.Daemon()
+client = Client()
+uriCliente = daemon.register(client)
 callback = CallbackHandler()
-daemon.register(callback)
+uriCallback = daemon.register(callback)
+print('Criado cliente: ' + client.nome)
+print('URI client: ')
+print(uriCliente)
+print('---------------------')
 
-#Loclaiza o servidor de nomes
+# Inicializa o deamon em background
+daemonThread = threading.Thread(target=client.inicializaDaemon, args=(daemon,), daemon=True)
+daemonThread.start()
+
+# Loclaiza o servidor de nomes
 uriNS = Pyro5.api.locate_ns()
 print('Nameserver:')
 print(uriNS)
-
 print('---------------------')
 
-try:
-    uriServer = uriNS.lookup("ServidorLeilao")
-    print('Servidor Leilao:')
-    print(uriServer)
-
-    serverLeilao = Pyro5.api.Proxy(uriServer)
-
-    serverLeilao.alo(callback)
-    daemon.requestLoop()
-except Exception as e:
-    print('Servidor nao localizado')
-    print(e)
-
-print('---------------------')
-listNS = uriNS.list()
-print(listNS)
+# Localiza o servidorLeilao
+uriServer = uriNS.lookup("ServidorLeilao")
+serverLeilao = Pyro5.api.Proxy(uriServer)
+print('Servidor Leilao:')
+print(uriServer)
 print('---------------------')
 
+opcao = 1
+while(opcao != 0):
+    print('****Menu:****')
+    print('1: Se registrar no servidor')
+    print('2: Consultar leiloes ativos')
+    print('3: Cadastrar um produto para leilão')
+    print('4: Dar lance em leilão')
+    print('5: Testar conexao')
+    print('0: Encerrar o programa')
+
+    opcao = input()
+    os.system('cls')
+
+    match opcao:
+        case '1':
+            if client.registrado == False:
+                print('---------------------')
+                print('Se registrando no server')
+                client.registroCliente = {
+                    "nome" : client.nome,
+                    "uri" : uriCliente
+                }
+                serverLeilao.registrarCliente(client.registroCliente)
+                client.registrado = True
+                print('---------------------\n')
+            else:
+                print('Ja esta cadastrado')
+                print('---------------------\n')
+        case '2':
+            serverLeilao.consultaLeiloes(callback)
+        case '3':
+            #nome = input('Nome do produto: ')
+            #descricao = input('Descricao do produto: ')
+            #val = input('Preco inicial do produto: ')
+            #tempo = input('Tempo em segundos do leilao: ')
+            #serverLeilao.cadastraLeilao(cod, nome, descricao, val, tempo, client.registroCliente)
+            serverLeilao.cadastraLeilao('Leilao teste', 'teste', 0, 30, client.registroCliente)
+        case '4':
+            cod = input('Cod do produto: ')
+            valor = input('Valor: ')
+            serverLeilao.darLance(int(cod), int(valor), client.registroCliente, callback)
+        case '5':
+            print('Testando funcao alo:')
+            serverLeilao.alo(callback)
+        case '0':
+            sys.exit()
+        case _:
+            print('Digite uma opcao valida')
+            print('---------------------\n')
