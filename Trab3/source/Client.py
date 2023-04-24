@@ -9,14 +9,14 @@
 # 2: Valor invalido
 # 3: Objeto finalizado
 
-from Leilao import Leilao
 import Pyro5.api
 import logging
 import threading
 import sys
 import os
-import time
-
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
+import base64
 
 class CallbackHandler(object):
 
@@ -54,8 +54,10 @@ class Client:
         self.registrado = False
         self.registroCliente = {
             "nome" : "",
-            "uri" : None
+            "uri" : None,
+            "chavePublica" : None
         }
+        self.chavePrivada = None
 
     def inicializaDaemon(self, daemon):
         daemon.requestLoop()
@@ -76,8 +78,13 @@ class Client:
         print(leilao)
         print('---------------------\n')
 
-    def notificaFim():
-        print("Um leilao foi encerrado\n")
+    @Pyro5.api.expose
+    @Pyro5.api.callback
+    def notificaFim(self, leilao):
+        print('---------------------')
+        print("O seguinte leilao foi finalizado: ")
+        print(leilao)
+        print('---------------------\n')
 
 
 # Inicializa o logger
@@ -132,9 +139,15 @@ while(opcao != 0):
             if client.registrado == False:
                 print('---------------------')
                 print('Se registrando no server')
+                client.chavePrivada = RSA.generate(2048)
+                #print (client.chavePrivada.exportKey())
+                pubKey = client.chavePrivada.publickey
+                #print (pubKey.exportKey())
+
                 client.registroCliente = {
                     "nome" : client.nome,
-                    "uri" : uriCliente
+                    "uri" : uriCliente,
+                    "chavePublica" : pubKey.exportKey()
                 }
                 serverLeilao.registrarCliente(client.registroCliente)
                 client.registrado = True
@@ -150,11 +163,14 @@ while(opcao != 0):
             #val = input('Preco inicial do produto: ')
             #tempo = input('Tempo em segundos do leilao: ')
             #serverLeilao.cadastraLeilao(cod, nome, descricao, val, tempo, client.registroCliente)
-            serverLeilao.cadastraLeilao('Leilao teste', 'teste', 0, 30, client.registroCliente)
+            serverLeilao.cadastraLeilao('Leilao teste', 'teste', 0, 60, client.registroCliente)
         case '4':
             cod = input('Cod do produto: ')
             valor = input('Valor: ')
-            serverLeilao.darLance(int(cod), int(valor), client.registroCliente, callback)
+            encryptor = PKCS1_OAEP.new(client.chavePrivada)
+            mensagem = encryptor.encrypt("assinado"+client.nome)
+            mensagemCodificada = base64.b64encode(mensagem)
+            serverLeilao.darLance(int(cod), int(valor), client.registroCliente, mensagemCodificada, callback)
         case '5':
             print('Testando funcao alo:')
             serverLeilao.alo(callback)

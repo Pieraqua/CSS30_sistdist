@@ -33,6 +33,12 @@ class Leilao:
     def interessados(self):
         return self.__interessados
     
+    def tempo(self):
+        return self.__tempo
+    
+    def nome(self):
+        return self.__nome
+    
     def retornaInformacoes(self):
         retorno = ""
         retorno += 'Codigo: ' + str(self.__cod)
