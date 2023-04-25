@@ -20,8 +20,8 @@ import Pyro5.server
 import Pyro5.errors
 import time
 from Crypto.PublicKey import RSA
-from Crypto.Cipher import PKCS1_OAEP
-import base64
+from Crypto.Signature import pkcs1_15
+from Crypto.Hash import SHA256
 
 class Server:
     def __init__(self):
@@ -68,22 +68,24 @@ class Server:
 
     @Pyro5.server.expose
     @Pyro5.server.oneway
-    def darLance(self, cod, valor, comprador, mensagemCodificada, callback):
+    def darLance(self, cod, valor, comprador, assinada, callback):
         callback._pyroClaimOwnership()
 
         usuario = None
         for item in self.__usuarios:
             if item["uri"] == comprador["uri"]:
                 usuario = item
-        
+
         if usuario == None:
             callback.lanceCallback('Voce nao esta cadastrado no server')
             return
         
-        encryptor = PKCS1_OAEP.new(usuario["chavePublica"])
-        mensagem = base64.b64decode(mensagemCodificada)
-        mensagemDecodificada = encryptor.decrypt(mensagem)
-        if mensagemDecodificada != "ass"+usuario["nome"]:
+        chavePublica = RSA.import_key(bytes(usuario["chavePublica"]))
+        try:
+            pkcs1_15.new(chavePublica).verify(SHA256.new(b'Assinado'), assinada)
+            print('Assinatura valida')
+        except ValueError as v:
+            print(v)
             callback.lanceCallback('Problema na assinatura')
             return
 

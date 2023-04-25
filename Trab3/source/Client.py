@@ -15,8 +15,8 @@ import threading
 import sys
 import os
 from Crypto.PublicKey import RSA
-from Crypto.Cipher import PKCS1_OAEP
-import base64
+from Crypto.Signature import pkcs1_15
+from Crypto.Hash import SHA256
 
 class CallbackHandler(object):
 
@@ -140,14 +140,11 @@ while(opcao != 0):
                 print('---------------------')
                 print('Se registrando no server')
                 client.chavePrivada = RSA.generate(2048)
-                #print (client.chavePrivada.exportKey())
-                pubKey = client.chavePrivada.publickey
-                #print (pubKey.exportKey())
-
+                chavePublica = client.chavePrivada.public_key()
                 client.registroCliente = {
                     "nome" : client.nome,
                     "uri" : uriCliente,
-                    "chavePublica" : pubKey.exportKey()
+                    "chavePublica" : list(chavePublica.public_key().export_key())
                 }
                 serverLeilao.registrarCliente(client.registroCliente)
                 client.registrado = True
@@ -167,10 +164,8 @@ while(opcao != 0):
         case '4':
             cod = input('Cod do produto: ')
             valor = input('Valor: ')
-            encryptor = PKCS1_OAEP.new(client.chavePrivada)
-            mensagem = encryptor.encrypt("assinado"+client.nome)
-            mensagemCodificada = base64.b64encode(mensagem)
-            serverLeilao.darLance(int(cod), int(valor), client.registroCliente, mensagemCodificada, callback)
+            assinada = pkcs1_15.new(client.chavePrivada).sign(SHA256.new(b'Assinado'))
+            serverLeilao.darLance(int(cod), int(valor), client.registroCliente, assinada, callback)
         case '5':
             print('Testando funcao alo:')
             serverLeilao.alo(callback)
