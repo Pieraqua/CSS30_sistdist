@@ -166,7 +166,7 @@ while(opcao != 0):
         if retorno == 0:
             print('Leilao cadastrado com sucesso\n')
         else:
-            print('Erro ao cadastrar leilao: ' + retorno + '\n')
+            print('Erro ao cadastrar leilao: ' + str(retorno) + '\n')
         #serverLeilao.cadastraLeilao('Leilao teste', 'teste', 0, 60, client.registroCliente)
     elif opcao == '4':
         cod = input('Cod do produto: ')
@@ -176,7 +176,7 @@ while(opcao != 0):
         if retorno == 0:
             print('Lance realizado com sucesso\n')
         else:
-            print('Erro ao dar lance: ' + retorno + '\n')
+            print('Erro ao dar lance: ' + str(retorno) + '\n')
     elif opcao == '5':
         print('Testando funcao alo:')
         serverLeilao.alo(callback)
