@@ -156,20 +156,27 @@ while(opcao != 0):
             print('Ja esta cadastrado')
             print('---------------------\n')
     elif opcao == '2':
-        serverLeilao.consultaLeiloes(callback)
+        print(serverLeilao.consultaLeiloes())
     elif opcao == '3':
         nome = input('Nome do produto: ')
         descricao = input('Descricao do produto: ')
         val = input('Preco inicial do produto: ')
         tempo = input('Tempo em segundos do leilao: ')
-        serverLeilao.cadastraLeilao(nome, descricao, int(val), int(tempo), client.registroCliente)
+        retorno = serverLeilao.cadastraLeilao(nome, descricao, int(val), int(tempo), client.registroCliente)
+        if retorno == 0:
+            print('Leilao cadastrado com sucesso\n')
+        else:
+            print('Erro ao cadastrar leilao: ' + retorno + '\n')
         #serverLeilao.cadastraLeilao('Leilao teste', 'teste', 0, 60, client.registroCliente)
     elif opcao == '4':
         cod = input('Cod do produto: ')
         valor = input('Valor: ')
         assinada = pkcs1_15.new(client.chavePrivada).sign(SHA256.new(b'Assinado'))
-        print(bytes(list(assinada)))
-        serverLeilao.darLance(int(cod), int(valor), client.registroCliente, list(assinada), callback)
+        retorno = serverLeilao.darLance(int(cod), int(valor), client.registroCliente, list(assinada))
+        if retorno == 0:
+            print('Lance realizado com sucesso\n')
+        else:
+            print('Erro ao dar lance: ' + retorno + '\n')
     elif opcao == '5':
         print('Testando funcao alo:')
         serverLeilao.alo(callback)

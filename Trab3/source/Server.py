@@ -10,6 +10,9 @@
 # 1: Erro desconhecido
 # 2: Valor invalido
 # 3: Objeto finalizado
+# 4: Cliente nao cadastrado
+# 5: Problema de assinatura
+# 6: Operacao invalida
 
 import sys
 import threading
@@ -30,17 +33,15 @@ class Server:
         self.cod = 0
 
     @Pyro5.server.expose
-    @Pyro5.server.oneway
     def registrarCliente(self, user):
         print('Tentativa de registro:')
         self.__usuarios.append(user)
         print('---------------------')
         print("Foi registrado o cliente: " + user["nome"])
+        return 0
     
     @Pyro5.server.expose
-    @Pyro5.server.oneway
-    def consultaLeiloes(self, callback):
-        callback._pyroClaimOwnership()
+    def consultaLeiloes(self):
         print('---------------------')
         print('Enviando lista de leiloes')
         self.imprimeLeiloes()
@@ -48,18 +49,16 @@ class Server:
         for leilao in self.__leiloes:
             leiloes += leilao.retornaInformacoes()
             leiloes += "    ---------------------"
-        callback.consultaCallback(leiloes)
+        return leiloes
 
     @Pyro5.server.expose
-    @Pyro5.server.oneway
     def cadastraLeilao(self, nome, descricao, val, tempo, dono):
         for item in self.__usuarios:
             if item["uri"] == dono["uri"]:
                 usuario = item
 
         if usuario == None:
-            dono.lanceCallback('Voce nao esta cadastrado no server')
-            return
+            return 4
         leilao = Leilao(self.cod, nome, descricao, val, tempo, dono)
         self.__leiloes.append(leilao)
         self.cod = self.cod + 1
@@ -72,19 +71,17 @@ class Server:
             user.notificaNovo(leilao.retornaInformacoes())
         p = threading.Thread(target=self.timerLeilao(leilao, self, leilao.tempo()))
         p.start()
+        return 0
 
     @Pyro5.server.expose
-    @Pyro5.server.oneway
-    def darLance(self, cod, valor, comprador, assinada, callback):
-        callback._pyroClaimOwnership()
+    def darLance(self, cod, valor, comprador, assinada):
         usuario = None
         for item in self.__usuarios:
             if item["uri"] == comprador["uri"]:
                 usuario = item
 
         if usuario == None:
-            callback.lanceCallback('Voce nao esta cadastrado no server')
-            return
+            return 4
         
 
         try:
@@ -93,20 +90,17 @@ class Server:
             print('Assinatura valida')
         except ValueError as v:
             print(v)
-            callback.lanceCallback('Problema na assinatura')
-            return
+            return 5
 
         try:
             leilao = self.__leiloes[cod]
         except:
             print('---------------------')
             print('Cod de produto invalido')
-            callback.lanceCallback('Cod de produto invalido')
-            return
+            return 2
         
         if leilao.dono() == comprador:
-            callback.lanceCallback('Dono nao pode dar lance!!!')
-            return
+            return 6
 
         print('---------------------')
         print('Dando lance de: ' + comprador["nome"])
@@ -114,12 +108,12 @@ class Server:
         if retorno == 3:
             print('---------------------')
             print('Leilao finalizado')
-            callback.lanceCallback('Leilao finalizado')
+            return 3
         elif retorno == 2:
             print('---------------------')
             print('Valor menor que o lance atual')
             print('---------------------\n')
-            callback.lanceCallback('Valor menor que o lance atual')
+            return 2
         elif retorno == 0:
             print('---------------------')
             print('Lance dado com sucesso')
@@ -128,6 +122,7 @@ class Server:
                 uri = item["uri"]
                 user = Pyro5.api.Proxy(uri)
                 user.notificaLance(leilao.retornaInformacoes())
+            return 0
     
     def imprimeLeiloes(self):
         print('---------------------')
@@ -156,6 +151,7 @@ class Server:
     
     #-------------------------------------------#
     
+    # Teste de conexão
     @Pyro5.server.expose
     @Pyro5.server.oneway
     def alo(self, callback):
