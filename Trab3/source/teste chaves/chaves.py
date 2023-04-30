@@ -6,7 +6,7 @@ from Crypto.Hash import SHA256
 chavePrivada = RSA.generate(2048)
 chavePublica = chavePrivada.public_key()
 lista = list(chavePublica.public_key().export_key())
-
+print(lista)
 assinada = pkcs1_15.new(chavePrivada).sign(SHA256.new(b'Hello World'))
 
 try:

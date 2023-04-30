@@ -132,45 +132,49 @@ while(opcao != 0):
     print('0: Encerrar o programa')
 
     opcao = input()
-    os.system('cls')
+    os.system('clear')
 
-    match opcao:
-        case '1':
-            if client.registrado == False:
-                print('---------------------')
-                print('Se registrando no server')
-                client.chavePrivada = RSA.generate(2048)
-                chavePublica = client.chavePrivada.public_key()
-                client.registroCliente = {
-                    "nome" : client.nome,
-                    "uri" : uriCliente,
-                    "chavePublica" : list(chavePublica.public_key().export_key())
-                }
-                serverLeilao.registrarCliente(client.registroCliente)
-                client.registrado = True
-                print('---------------------\n')
-            else:
-                print('Ja esta cadastrado')
-                print('---------------------\n')
-        case '2':
-            serverLeilao.consultaLeiloes(callback)
-        case '3':
-            #nome = input('Nome do produto: ')
-            #descricao = input('Descricao do produto: ')
-            #val = input('Preco inicial do produto: ')
-            #tempo = input('Tempo em segundos do leilao: ')
-            #serverLeilao.cadastraLeilao(cod, nome, descricao, val, tempo, client.registroCliente)
-            serverLeilao.cadastraLeilao('Leilao teste', 'teste', 0, 60, client.registroCliente)
-        case '4':
-            cod = input('Cod do produto: ')
-            valor = input('Valor: ')
-            assinada = pkcs1_15.new(client.chavePrivada).sign(SHA256.new(b'Assinado'))
-            serverLeilao.darLance(int(cod), int(valor), client.registroCliente, assinada, callback)
-        case '5':
-            print('Testando funcao alo:')
-            serverLeilao.alo(callback)
-        case '0':
-            sys.exit()
-        case _:
-            print('Digite uma opcao valida')
+    
+    if opcao == '1':
+        if client.registrado == False:
+            print('---------------------')
+            print('Se registrando no server')
+            client.chavePrivada = RSA.generate(2048)
+            chavePublica = client.chavePrivada.public_key()
+            lista = list(chavePublica.public_key().export_key())
+            #print(chavePublica)
+            client.registroCliente = {
+                "nome" : client.nome,
+                "uri" : uriCliente,
+                "chavePublica" : lista
+            }
+            #print(client.registroCliente["chavePublica"])
+            serverLeilao.registrarCliente(client.registroCliente)
+            client.registrado = True
             print('---------------------\n')
+        else:
+            print('Ja esta cadastrado')
+            print('---------------------\n')
+    elif opcao == '2':
+        serverLeilao.consultaLeiloes(callback)
+    elif opcao == '3':
+        nome = input('Nome do produto: ')
+        descricao = input('Descricao do produto: ')
+        val = input('Preco inicial do produto: ')
+        tempo = input('Tempo em segundos do leilao: ')
+        serverLeilao.cadastraLeilao(nome, descricao, int(val), int(tempo), client.registroCliente)
+        #serverLeilao.cadastraLeilao('Leilao teste', 'teste', 0, 60, client.registroCliente)
+    elif opcao == '4':
+        cod = input('Cod do produto: ')
+        valor = input('Valor: ')
+        assinada = pkcs1_15.new(client.chavePrivada).sign(SHA256.new(b'Assinado'))
+        print(bytes(list(assinada)))
+        serverLeilao.darLance(int(cod), int(valor), client.registroCliente, list(assinada), callback)
+    elif opcao == '5':
+        print('Testando funcao alo:')
+        serverLeilao.alo(callback)
+    elif opcao == '0':
+        sys.exit()
+    else:
+        print('Digite uma opcao valida')
+        print('---------------------\n')

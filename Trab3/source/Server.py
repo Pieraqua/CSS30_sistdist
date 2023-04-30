@@ -53,6 +53,13 @@ class Server:
     @Pyro5.server.expose
     @Pyro5.server.oneway
     def cadastraLeilao(self, nome, descricao, val, tempo, dono):
+        for item in self.__usuarios:
+            if item["uri"] == dono["uri"]:
+                usuario = item
+
+        if usuario == None:
+            dono.lanceCallback('Voce nao esta cadastrado no server')
+            return
         leilao = Leilao(self.cod, nome, descricao, val, tempo, dono)
         self.__leiloes.append(leilao)
         self.cod = self.cod + 1
@@ -70,7 +77,6 @@ class Server:
     @Pyro5.server.oneway
     def darLance(self, cod, valor, comprador, assinada, callback):
         callback._pyroClaimOwnership()
-
         usuario = None
         for item in self.__usuarios:
             if item["uri"] == comprador["uri"]:
@@ -80,9 +86,10 @@ class Server:
             callback.lanceCallback('Voce nao esta cadastrado no server')
             return
         
-        chavePublica = RSA.import_key(bytes(usuario["chavePublica"]))
+
         try:
-            pkcs1_15.new(chavePublica).verify(SHA256.new(b'Assinado'), assinada)
+            chavePublica = usuario["chavePublica"]
+            pkcs1_15.new(RSA.import_key(bytes(chavePublica))).verify(SHA256.new(b'Assinado'), bytes(assinada))
             print('Assinatura valida')
         except ValueError as v:
             print(v)

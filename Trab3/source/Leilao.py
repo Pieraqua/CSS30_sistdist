@@ -77,6 +77,7 @@ class Leilao:
         self.__interessados.append(comprador)
         return 0
 
+    # Tarefa pyro de timer parecido com timer task do java
     def tick_tempo(self):
         if(self.__tempo > 0):
             self.__tempo = self.__tempo - 1
