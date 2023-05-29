@@ -162,17 +162,19 @@ while(opcao != 0):
         descricao = input('Descricao do produto: ')
         val = input('Preco inicial do produto: ')
         tempo = input('Tempo em segundos do leilao: ')
-        retorno = serverLeilao.cadastraLeilao(nome, descricao, int(val), int(tempo), client.registroCliente)
-        if retorno == 0:
-            print('Leilao cadastrado com sucesso\n')
-        else:
-            print('Erro ao cadastrar leilao: ' + str(retorno) + '\n')
+        #retorno = 
+        serverLeilao.cadastraLeilao(nome, descricao, int(val), int(tempo), client.registroCliente['uri'])
+        print('Tentativa de cadastro realizada')
+        #if retorno == 0:
+        #    print('Leilao cadastrado com sucesso\n')
+        #else:
+        #    print('Erro ao cadastrar leilao: ' + str(retorno) + '\n')
         #serverLeilao.cadastraLeilao('Leilao teste', 'teste', 0, 60, client.registroCliente)
     elif opcao == '4':
         cod = input('Cod do produto: ')
         valor = input('Valor: ')
         assinada = pkcs1_15.new(client.chavePrivada).sign(SHA256.new(b'Assinado'))
-        retorno = serverLeilao.darLance(int(cod), int(valor), client.registroCliente, list(assinada))
+        retorno = serverLeilao.darLance(int(cod), int(valor), client.registroCliente['uri'], list(assinada))
         if retorno == 0:
             print('Lance realizado com sucesso\n')
         else:

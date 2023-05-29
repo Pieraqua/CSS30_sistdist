@@ -20,38 +20,57 @@ import threading
 import time
 from Leilao import Leilao
 from flask import Flask, request, jsonify
+import atexit
+from apscheduler.schedulers.background import BackgroundScheduler
 
 Server = Flask(__name__)
 
-leiloes = []
-usuarios = []
-cod = 0
+class ServerData:
+    leiloes = []
+    usuarios = []
+    cod = 0
 
-def imprimeLeiloes():
-    print('---------------------')
-    print('Imprimindo leiloes: ')
-    leiloes = ""
-    for leilao in leiloes:
-        leiloes += leilao.retornaInformacoes()
-        leiloes += "    ---------------------"
-    print(leiloes)
+    def getLeiloes(self):
+        return self.leiloes
 
-def leilaoFinalizado(leilao):
-    interessados = leilao.interessados()
-    print('---------------------')
-    print('Leilao: ' + leilao.nome() + ' finalizado, notificando interessados')
-    for item in interessados:
-        uri = item["uri"]
-        user = Pyro5.api.Proxy(uri)
-        user.notificaFim(leilao.retornaInformacoes())
+    def getCod(self):
+        return self.cod
+    def setCod(self, val):
+        self.cod = val
 
-def timerLeilao(leilao, servidor, tempo):
-    for i in range(tempo):
-        leilao.tick_tempo()
-        time.sleep(1)
-    
-    servidor.leilaoFinalizado(leilao)
-    leiloes.remove(leilao)
+    def imprimeLeiloes(self):
+        print('---------------------')
+        print('Imprimindo leiloes: ')
+        leiloes = ""
+        for leilao in self.getLeiloes():
+            leiloes += leilao.retornaInformacoes()
+            leiloes += "    ---------------------"
+        print(leiloes)
+
+    # Funcao de encerrar leiloes
+    def verifica_leiloes(self):
+        for leilao in self.leiloes:
+            if(leilao.tick_tempo() == 3):
+                # Acabou tempo do leilao
+                print("Leilao " + leilao.nome() + " encerrado.")
+
+                # TODO: Notificar usuarios
+                for item in leilao.interessados():
+                    print("notificar " + item["nome"][0])
+
+                self.leiloes.remove(leilao)
+
+server = ServerData()
+
+# Create the background scheduler
+scheduler = BackgroundScheduler()
+# Create the job
+scheduler.add_job(func=server.verifica_leiloes, trigger="interval", seconds=1)
+# Start the scheduler
+scheduler.start()
+
+# /!\ IMPORTANT /!\ : Shut down the scheduler when exiting the app
+atexit.register(lambda: scheduler.shutdown())
 
 #-------------------------------------------#
 
@@ -60,21 +79,23 @@ def timerLeilao(leilao, servidor, tempo):
 def registrarCliente():
     user = request.get_json()
     print('Tentativa de registro:')
-    usuarios.append(user)
+    server.usuarios.append(user)
     print('---------------------')
-    print("Foi registrado o cliente: " + user["nome"])
-    return 201
+    print("Foi registrado o cliente: " + user["nome"][0])
+    return "Cliente Registrado"
 
 #2: Consultar leiloes ativos
 @Server.get("/leilao")
 def consultaLeiloes():
     print('---------------------')
     print('Enviando lista de leiloes')
-    imprimeLeiloes()
+    server.imprimeLeiloes()
     leiloes = ""
-    for leilao in leiloes:
+    for leilao in server.getLeiloes():
         leiloes += leilao.retornaInformacoes()
         leiloes += "    ---------------------"
+
+    print(leiloes)
     return leiloes
 
 #3: Cadastrar um produto para leilão
@@ -82,39 +103,37 @@ def consultaLeiloes():
 def cadastraLeilao():
     pkg = request.get_json()
     usuario = None
-    for item in usuarios:
+    print(pkg)
+    for item in server.usuarios:
         if item["nome"] == pkg["dono"]:
             usuario = item
 
+    print(usuario)
     if usuario == None:
         print('---------------------')
         print('Erro ao cadastrar leilao, usuario invalido\n')
         return "Erro ao cadastrar leilão, usuario invalido"
     
-    leilao = Leilao(cod, pkg["nome"], pkg["descricao"], pkg["val"], pkg["tempo"], usuario)
-    leiloes.append(leilao)
-    cod = cod + 1
-    print('---------------------')
-    print('Foi cadastrado o ' + pkg["nome"] + ' de ' + usuario["nome"])
+    leilao = Leilao(server.getCod(), pkg["nome"][0], pkg["descricao"][0], int(pkg["val"][0]), int(pkg["tempo"][0]), usuario)
+    server.leiloes.append(leilao)
+    server.setCod(server.getCod() + 1)
+    print('Foi cadastrado o ' + pkg["nome"][0] + ' de ' + usuario["nome"][0])
 
-    interessados = usuarios
+    interessados = server.usuarios
 
     for item in interessados:
-        uri = item["uri"]
-        user = Pyro5.api.Proxy(uri)
-        user.notificaNovo(leilao.retornaInformacoes())
+        # uri = item["uri"]
+        # TODO: Notificar criacao de novo leilao
+        print("criado novo leilao " + item["nome"][0])
 
-    # Nao consegui um jeito melhor de fazer isso.
-    p = threading.Thread(target=timerLeilao(leilao, leilao.tempo()))
-    p.start()
-    #return 0
+    return "Leilão cadastrado"
 
 #4: Dar lance em leilão
 @Server.post("/lance")
 def darLance():
     pkg = request.get_json()
     usuario = None
-    for item in usuarios:
+    for item in server.usuarios:
         if item["nome"] == pkg["nome"]:
             usuario = item
 
@@ -124,7 +143,7 @@ def darLance():
         return "Erro ao dar lance, usuario invalido"
 
     try:
-        leilao = leiloes[pkg["cod"]]
+        leilao = server.leiloes[pkg["cod"]]
     except:
         print('---------------------')
         print('Erro ao dar lance, cod de leilao invalido\n')
@@ -153,10 +172,8 @@ def darLance():
 
         interessados = leilao.interessados()
         for item in interessados:
-            uri = item["uri"]
-            user = Pyro5.api.Proxy(uri)
-            user.notificaLance(leilao.retornaInformacoes())
-        
+            # TODO: notificar lance
+            print("Interessado no lance: " + item["nome"])
 
         return "Lance dado com sucesso"
 

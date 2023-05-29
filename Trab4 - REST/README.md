@@ -1,13 +1,12 @@
 # Descricao
 
-Trabalho 3 de Sistemas Distribuidos. Middleware Pyro.
+Trabalho 4 de Sistemas Distribuidos. Leilão RESTful.
+
+# Para rodar
+flask --app Server.py run
 
 # Requisitos
 
-- Executar um processo servidor e ao menos tres processos clientes
-- Utilizar PyRO para comunicacao cliente-servidor
-- Cada cliente pode participar e criar leiloes
-- Havera apenas um servidor DNS na maquina, criado pelo processo servidor
 
 # Servidor
 

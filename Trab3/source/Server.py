@@ -51,38 +51,43 @@ class Server:
             leiloes += "    ---------------------"
         return leiloes
 
+    # Algo sobre a thread estah travando o servidor se eu tento retornar algo aqui, manter oneway por enquanto pq o cliente
+    # ja descobre se funciona pelo retorno da notificacao
     @Pyro5.server.expose
+    @Pyro5.api.oneway
     def cadastraLeilao(self, nome, descricao, val, tempo, dono):
         for item in self.__usuarios:
-            if item["uri"] == dono["uri"]:
+            if item["uri"] == dono:
                 usuario = item
 
         if usuario == None:
-            return 4
-        leilao = Leilao(self.cod, nome, descricao, val, tempo, dono)
+            print('---------------------')
+            print('Erro ao cadastrar leilao\n')
+            return
+        leilao = Leilao(self.cod, nome, descricao, val, tempo, usuario)
         self.__leiloes.append(leilao)
         self.cod = self.cod + 1
         print('---------------------')
-        print('Foi cadastrado o ' + nome + ' de ' + dono["nome"])
+        print('Foi cadastrado o ' + nome + ' de ' + usuario["nome"])
         interessados = self.__usuarios
         for item in interessados:
             uri = item["uri"]
             user = Pyro5.api.Proxy(uri)
             user.notificaNovo(leilao.retornaInformacoes())
+        # Nao consegui um jeito melhor de fazer isso.
         p = threading.Thread(target=self.timerLeilao(leilao, self, leilao.tempo()))
         p.start()
-        return 0
+        #return 0
 
     @Pyro5.server.expose
     def darLance(self, cod, valor, comprador, assinada):
         usuario = None
         for item in self.__usuarios:
-            if item["uri"] == comprador["uri"]:
+            if item["uri"] == comprador:
                 usuario = item
 
         if usuario == None:
             return 4
-        
 
         try:
             chavePublica = usuario["chavePublica"]
@@ -99,12 +104,12 @@ class Server:
             print('Cod de produto invalido')
             return 2
         
-        if leilao.dono() == comprador:
+        if leilao.dono() == usuario:
             return 6
 
         print('---------------------')
-        print('Dando lance de: ' + comprador["nome"])
-        retorno = leilao.realizar_lance(valor, comprador)
+        print('Dando lance de: ' + usuario["nome"])
+        retorno = leilao.realizar_lance(valor, usuario)
         if retorno == 3:
             print('---------------------')
             print('Leilao finalizado')
@@ -141,6 +146,7 @@ class Server:
             uri = item["uri"]
             user = Pyro5.api.Proxy(uri)
             user.notificaFim(leilao.retornaInformacoes())
+
     
     def timerLeilao(self, leilao, servidor, tempo):
         for i in range(tempo):
@@ -148,6 +154,7 @@ class Server:
             time.sleep(1)
         
         servidor.leilaoFinalizado(leilao)
+        self.__leiloes.remove(leilao)
     
     #-------------------------------------------#
     

@@ -50,16 +50,16 @@ class Leilao:
         if self.__dono == None:
             retorno += "SEM DONO"
         else:
-            retorno += self.__dono["nome"]
+            retorno += self.__dono["nome"][0]
         retorno += '\n' + 'Comprador atual: '
         if self.__comprador_atual == None:
             retorno += "SEM COMPRADOR ATUAL"
         else:
-            retorno += self.__comprador_atual["nome"]
+            retorno += self.__comprador_atual["nome"][0]
 
         retorno += '\n' + 'Interessados: '
         for i in self.__interessados:
-            retorno += '\n' + i["nome"]
+            retorno += '\n' + i["nome"][0]
         retorno += '\n'
         return retorno
 
