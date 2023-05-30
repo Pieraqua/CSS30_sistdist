@@ -100,11 +100,12 @@ public class ClientLeilao {
     private static SseEventSource source = null;
     private static WebTarget target = null;
     private static Client client = null;
+    private static Thread thread_sse = null;
     public static void startSSE()
     {
         client = ClientBuilder.newClient();
         target = client.target(urlServer + "/stream?channel="+nome);
-        new Thread() {
+        thread_sse = new Thread() {
 
             @Override
             public void run() {
@@ -119,12 +120,17 @@ public class ClientLeilao {
                     e.printStackTrace();
                 }
             }
-          }.start();
+          };
+        thread_sse.start();
     }
     
     public static void closeSSEs()
     {
-        source.close();
+        if(thread_sse != null)
+        {
+            thread_sse.interrupt();
+            source.close();
+        }
     }
     
     
