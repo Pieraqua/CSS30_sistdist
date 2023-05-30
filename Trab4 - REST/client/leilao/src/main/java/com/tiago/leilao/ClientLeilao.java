@@ -4,8 +4,14 @@
  */
 package com.tiago.leilao;
 
+import com.here.oksse.OkSse;
+import com.here.oksse.ServerSentEvent;
 import java.io.IOException;
 import java.util.Scanner;
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.sse.SseEventSource;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -23,6 +29,47 @@ public class ClientLeilao {
     private static boolean registrado = false;
     private static String urlServer = "http://127.0.0.1:5000";
     
+    private static OkSse okSse = null;
+    
+    private static ServerSentEvent sseCadastroLeilao = null;
+    
+    private static final ServerSentEvent.Listener sseListener = new ServerSentEvent.Listener() {
+        @Override
+        public void onOpen(ServerSentEvent sse, Response response) {
+            // When the channel is opened
+            //System.out.println("Escutando por eventos SSE");
+        }
+
+        @Override
+        public void onMessage(ServerSentEvent sse, String id, String event, String message) {
+            // When a message is received
+            System.out.println("aaaa" + message);
+        }
+        @Override
+        public void onComment(ServerSentEvent sse, String comment) {
+           // When a comment is received
+            System.out.println("aaaa" + comment);
+        }
+        @Override
+        public boolean onRetryTime(ServerSentEvent sse, long milliseconds) {
+            return true; // True to use the new retry time received by SSE
+        }
+        @Override
+        public boolean onRetryError(ServerSentEvent sse, Throwable throwable, Response response) {
+            return true; // True to retry, false otherwise
+        }
+        @Override
+        public void onClosed(ServerSentEvent sse) {
+            // Channel closed
+        }
+
+        @Override
+        public Request onPreRetry(ServerSentEvent sse, Request rqst) {
+            //throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+            return rqst;
+        }
+    };
+    
     private static void chamadaCliente(String corpo, String url, String metodo)
     {
         OkHttpClient client = new OkHttpClient().newBuilder()
@@ -38,21 +85,53 @@ public class ClientLeilao {
                 .method(metodo, body)
                 .addHeader("Content-Type", "application/json")
                 .build();
-        
+        Response response = null;
         try {
-            Response response = client.newCall(request).execute();
+            response = client.newCall(request).execute();
             String resposta = response.body().string();
             if(resposta != null)
                 System.out.println(resposta);
         } catch (IOException ex) {
             System.out.println("Erro: " + ex);
+            if(response != null)
+                response.close();
         }
+    }
+    private static SseEventSource source = null;
+    private static WebTarget target = null;
+    private static Client client = null;
+    public static void startSSE()
+    {
+        client = ClientBuilder.newClient();
+        target = client.target(urlServer + "/stream?channel="+nome);
+        new Thread() {
+
+            @Override
+            public void run() {
+                try {
+                    source = SseEventSource.target(target).build();
+                    source.register((inboundSseEvent) -> {
+                        System.out.println(inboundSseEvent.readData());
+                    });
+                    source.open();
+                }catch(Exception e)
+                {
+                    e.printStackTrace();
+                }
+            }
+          }.start();
+    }
+    
+    public static void closeSSEs()
+    {
+        source.close();
     }
     
     
     public static void main(String[] args) {
         
         Scanner sc=new Scanner(System.in);
+        
         int opcao = 1;
         while(opcao != 0)
         {
@@ -80,6 +159,7 @@ public class ClientLeilao {
                         corpo.append("nome", nome);
                         chamadaCliente(corpo.toString(), "/cliente", "POST");
                         registrado = true;
+                        startSSE();
                     }
                     else
                     {
@@ -131,6 +211,8 @@ public class ClientLeilao {
                 }
             }
         }
+        
+        closeSSEs();
     }
     /*
     opcao = input()

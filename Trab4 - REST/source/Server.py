@@ -20,10 +20,22 @@ import threading
 import time
 from Leilao import Leilao
 from flask import Flask, request, jsonify
+from flask_sse import sse
 import atexit
 from apscheduler.schedulers.background import BackgroundScheduler
 
 Server = Flask(__name__)
+Server.config["REDIS_URL"] = "redis://localhost"
+Server.register_blueprint(sse, url_prefix='/stream')
+
+def send_message(message = '', channel = ''):
+    with Server.app_context():
+        if(message != '' ):
+            sse.publish(message, type='message', channel=channel)
+            print("mensagem sse " + str(message))
+            return 'sent message ' + str(message)
+        else:
+            return 'subscribed to sse-stream'
 
 class ServerData:
     leiloes = []
@@ -54,10 +66,16 @@ class ServerData:
                 # Acabou tempo do leilao
                 print("Leilao " + leilao.nome() + " encerrado.")
 
-                # TODO: Notificar usuarios
                 for item in leilao.interessados():
                     print("notificar " + item["nome"][0])
-
+                    print(leilao.nome())
+                    print(leilao.comprador_atual())
+                    if(leilao.comprador_atual() != None):
+                        send_message({"message" : "Leilao " + leilao.nome() + " encerrado. Ganhador: " 
+                                      + leilao.comprador_atual()["nome"][0]}, channel = item["nome"][0])
+                    else:
+                        send_message({"message" : "Leilao " + leilao.nome() 
+                                      + " encerrado. Ganhador: Ninguem."}, channel=item["nome"][0])
                 self.leiloes.remove(leilao)
 
 server = ServerData()
@@ -73,7 +91,6 @@ scheduler.start()
 atexit.register(lambda: scheduler.shutdown())
 
 #-------------------------------------------#
-
 #1: Se registrar no servidor
 @Server.post("/cliente")
 def registrarCliente():
@@ -122,11 +139,14 @@ def cadastraLeilao():
     interessados = server.usuarios
 
     for item in interessados:
-        # uri = item["uri"]
-        # TODO: Notificar criacao de novo leilao
-        print("criado novo leilao " + item["nome"][0])
+        print("criado novo leilao " + leilao.nome())
+        print(leilao.nome())
+        print(leilao.dono())
+        send_message({"message" : "Leilao " + str(leilao.nome()) 
+                      + " criado. Dono: " + str(leilao.dono()["nome"][0])}, channel=item["nome"][0])
 
-    return "Leilão cadastrado"
+
+    return "Leilao cadastrado"
 
 #4: Dar lance em leilão
 @Server.post("/lance")
@@ -172,8 +192,10 @@ def darLance():
 
         interessados = leilao.interessados()
         for item in interessados:
-            # TODO: notificar lance
             print("Interessado no lance: " + item["nome"])
+            send_message({"message" : "Leilao " + leilao.nome() 
+                          + " com novo lance. Lance por: " 
+                          + usuario["nome"][0]}, type='publish', channel=item["nome"][0])
 
         return "Lance dado com sucesso"
 
