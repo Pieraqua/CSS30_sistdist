@@ -88,8 +88,8 @@ class ProdutorRecurso:
     
     def efetivar(self):
         f = open(self.nome+"Temporario.txt", "r")
-        f.close()
         self.armazenamento = int(f.readline())
+        f.close()
         f = open(self.nome+"Definitivo.txt", "w")
         f.write(str(self.armazenamento))
         f.close()
