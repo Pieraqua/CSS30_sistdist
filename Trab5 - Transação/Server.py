@@ -60,23 +60,23 @@ class ProdutorRecurso:
         self.armazenamento = int(f.readline())
         f.close()
 
-        self.chanceFalha = 0
+        self.chanceFalha = 13
         self.tempoDemora = 0
 
     def desejaEfetivar(self, pedido):
         global locks
         if locks[self.id].acquire(blocking=True, timeout=13) == False:
             print(str(self.id) + "nao conseguiu acessar o lock")
-            return False, self.nome + " nao conseguiu acessar o lock"
+            return False, self.nome + " nao conseguiu acessar o lock, pedido abortado"
 
         if self.armazenamento < pedido[str(self.id)]:
             locks[self.id].release()
-            return False, self.nome + " nao possui material o suficiente"
+            return False, self.nome + " nao possui material o suficiente, pedido abortado"
 
         rollFalha = random.randrange(0, 100)
         if rollFalha < self.chanceFalha:
             locks[self.id].release()
-            return False, self.nome + "falhou",
+            return False, self.nome + " falhou, pedido abortado",
         
         f = open(self.nome+"Temporario.txt", "w")
         f.write(str(self.armazenamento - pedido[str(self.id)]))
@@ -150,7 +150,7 @@ class Server:
         for i in range(self.contRecursos):
             if pedido[str(i)] != 0:
                 self.produtores[i].efetivar()
-        return "Seu pedido foi feito com sucesso, novo estoque:\n" + (self.consultaEstoque())[0]
+        return "Seu pedido foi efetivado, novo estoque:\n" + (self.consultaEstoque())[0]
 
     # Teste de conexão
     @Pyro5.server.expose
