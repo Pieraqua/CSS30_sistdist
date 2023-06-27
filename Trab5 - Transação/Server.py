@@ -11,7 +11,6 @@ import threading
 import logging
 import random
 import time
-import continuous_threading
 
 # Cliente pode:
 
@@ -57,9 +56,9 @@ class ProdutorRecurso:
         self.intervaloProd = 1
         # self.intervaloProd = random.randrange(1,10)
         # Mudar para ler de arquivo talvez
-        f = open(self.nome+".txt", "r")
+        f = open(self.nome+"Definitivo.txt", "r")
         self.armazenamento = int(f.readline())
-        #self.armazenamento = 50
+        f.close()
 
         self.chanceFalha = 0
         self.tempoDemora = 0
@@ -79,7 +78,7 @@ class ProdutorRecurso:
             locks[self.id].release()
             return False, self.nome + "falhou",
         
-        f = open(self.nome+".txt", "w")
+        f = open(self.nome+"Temporario.txt", "w")
         f.write(str(self.armazenamento - pedido[str(self.id)]))
         f.close()
 
@@ -88,8 +87,12 @@ class ProdutorRecurso:
         return True, ""
     
     def efetivar(self):
-        f = open(self.nome+".txt", "r")
+        f = open(self.nome+"Temporario.txt", "r")
+        f.close()
         self.armazenamento = int(f.readline())
+        f = open(self.nome+"Definitivo.txt", "w")
+        f.write(str(self.armazenamento))
+        f.close()
         locks[self.id].release()
 
     def abortar(self):
