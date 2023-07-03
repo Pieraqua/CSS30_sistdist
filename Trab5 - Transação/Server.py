@@ -130,9 +130,18 @@ class Server:
     def fazerPedido(self, pedido):
         respostas = []
 
+        id_pedido = self.contPedidos
+        self.contPedidos += 1
+
+        f = open("log.txt", "a")
+        f.write("id:"+str(id_pedido)+";status:iniciado"+'\n')
+        f.close()
         # Primeira etapa: pergunta se todos desejam efetivar
         for i in range(self.contRecursos):
             if pedido[str(i)] != 0:
+                f = open("log.txt", "a")
+                f.write("id:"+str(id_pedido)+";status:processando;participante:"+str(self.produtores[i].id)+'\n')
+                f.close()
                 respostas.append(self.produtores[i].desejaEfetivar(pedido))
             else:
                 respostas.append((True, ""))
@@ -144,12 +153,24 @@ class Server:
                 for i in range(self.contRecursos):
                     if pedido[str(i)] != 0 and respostas[i][0] == True:
                         self.produtores[i].abortar()
+                        
+                    if pedido[str(i)] != 0:
+                        f = open("log.txt", "a")
+                        f.write("id:"+str(id_pedido)+";status:falhando;participante:"+str(self.produtores[i].id)+'\n')
+                        f.close()
                 return resposta[1]
         
         # Caso chegue aqui, todos votaram para efetivar
         for i in range(self.contRecursos):
             if pedido[str(i)] != 0:
-                self.produtores[i].efetivar()
+                self.produtores[i].efetivar()        
+                f = open("log.txt", "a")
+                f.write("id:"+str(id_pedido)+";status:efetivando;participante:"+str(self.produtores[i].id)+'\n')
+                f.close()
+
+        f = open("log.txt", "a")
+        f.write("id:"+str(id_pedido)+";status:efetivado"+'\n')
+        f.close()
         return "Seu pedido foi efetivado, novo estoque:\n" + (self.consultaEstoque())[0]
 
     # Teste de conexão
@@ -158,6 +179,7 @@ class Server:
         print('---------------------')
         print('Recebi alo, devolvendo ola')
         return "ola"
+    
 
 
 # Inicializa o logger
