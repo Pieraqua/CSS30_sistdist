@@ -137,16 +137,19 @@ class Server:
         f.write("id:"+str(id_pedido)+";status:iniciado"+'\n')
         f.close()
         # Primeira etapa: pergunta se todos desejam efetivar
+        cont_chamadas = 0
         for i in range(self.contRecursos):
             if pedido[str(i)] != 0:
                 f = open("log.txt", "a")
                 f.write("id:"+str(id_pedido)+";status:processando;participante:"+str(self.produtores[i].id)+'\n')
                 f.close()
                 respostas.append(self.produtores[i].desejaEfetivar(pedido))
+                cont_chamadas += 1
             else:
                 respostas.append((True, ""))
         
         # Checa os votos de todos
+        cont_respostas = 0
         for resposta in respostas:
             # Caso um queira abortar, aborta todos
             if resposta[0] == False:
@@ -159,6 +162,18 @@ class Server:
                         f.write("id:"+str(id_pedido)+";status:falhando;participante:"+str(self.produtores[i].id)+'\n')
                         f.close()
                 return resposta[1]
+            cont_respostas += 1
+        
+        if cont_respostas != cont_chamadas:
+            for i in range(self.contRecursos):
+                if pedido[str(i)] != 0 and respostas[i][0] == True:
+                    self.produtores[i].abortar()
+                    
+                if pedido[str(i)] != 0:
+                    f = open("log.txt", "a")
+                    f.write("id:"+str(id_pedido)+";status:falhando;participante:"+str(self.produtores[i].id)+'\n')
+                    f.close()
+                return "Algum dos produtores nao respondeu"
         
         # Caso chegue aqui, todos votaram para efetivar
         for i in range(self.contRecursos):
